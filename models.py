@@ -2,6 +2,7 @@ from app import db
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+import json
 
 # Your database models should go here.
 # Check out the Flask-SQLAlchemy quickstart for some good docs!
@@ -14,6 +15,7 @@ class Club(db.Model):
     description = db.Column(db.Text(), nullable=False)
     tags = db.Column(db.Text())
     favorites = db.Column(db.Integer(), default = 0)
+    files = db.Column(db.Text(), default = json.dumps([]))
 
     def to_dict(self):
         return {'code': self.code,
@@ -32,7 +34,7 @@ class User(UserMixin, db.Model):
     salt = db.Column(db.String(60))
     email = db.Column(db.String(50), unique = True)
     # lastlogin = db.Column(db.Time(), default = datetime.now)
-    favorites = db.Column(db.Text())
+    favorites = db.Column(db.Text(), default = json.dumps([]))
 
     # is_authenticated = db.Column(db.Boolean(), default = False)
     # auth_ip = db.Column(db.String(20), default = "0.0.0.0")
@@ -40,4 +42,6 @@ class User(UserMixin, db.Model):
     def to_dict(self):
         return {'name': self.name,
                 'grad': self.grad,
-                'major': self.major}
+                'major': self.major,
+                'email': self.email,
+                'favorites': self.favorites}

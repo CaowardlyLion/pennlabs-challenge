@@ -8,6 +8,10 @@ DB_FILE = "clubreview.db"
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_FILE}"
+app.config['UPLOAD_FOLDER'] = ["files/"]
+app.config['MAX_CONTENT_PATH'] = 8000000
+
+
 db = SQLAlchemy(app)
 
 from models import *
@@ -146,12 +150,12 @@ def adduser():
     email = request.form.get("email")
     hash = bcrypt.hashpw(request.form.get("password").encode(), salt)
     # lastlogin = datetime.now(),
-    favorites = json.dumps([])
+    # favorites = json.dumps([])
     query = User.query.filter_by(id = userid).one_or_none()
     query2 = User.query.filter_by(username = username).one_or_none()
     if query is not None and query2 is not None:
         return jsonify({"Error": "User already exists with that PennID or username."}), 400
-    user = User(id = userid, username = username, name = name, grad = grad, major = major, hash = hash, salt = salt, favorites = favorites, email = email)
+    user = User(id = userid, username = username, name = name, grad = grad, major = major, hash = hash, salt = salt, email = email)
     db.session.add(user)
     db.session.commit()
     return {}
@@ -172,17 +176,12 @@ def addtag():
 
 @app.route('/api/login', methods = ['POST'])
 def login():
-    # loginip = request.remote_addr
     username = request.form.get("username")
     passwd = request.form.get("password")
-    # username = "josh"
-    # passwd = "password"
     query = User.query.filter_by(username = username).one_or_none() 
     salt = bytes(query.salt)
     if query is not None and str(bcrypt.hashpw(passwd.encode(), salt)) == str(query.hash):
           login_user(query, remember=False)
-    #     query.is_authenticated = True
-    #     query.auth_ip = loginip
           return {}
     else:
         return jsonify({"Error:" : "Incorrect password, or user does not exist."}), 400
@@ -197,6 +196,15 @@ def logout():
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.filter_by(id = user_id).one_or_none()
+
+from werkzeug.utils import secure_filename
+
+# Challenge 3: File Upload
+@app.route('/api/upload', methods = ['POST'])
+def upload():
+    f = request.files['file']
+    f.save(secure_filename(f.filename))
+    return {}
 
 # Unit tests! Mainly tests the POST routes as the GET routes are viewable via browser
 if __name__ == '__main__':
@@ -225,10 +233,8 @@ if __name__ == '__main__':
         print(response)
         response = test_client.post('/api/favorite', data = dict(id = 31394502, clubid = "pppjo"))
         print(response)
-
+        response = test_client.post('/api/upload', data = open("file.txt"))
+        print(response)
     
 if __name__ == '__main__':
-    # from waitress import serve
-    # serve(app, host="0.0.0.0", port=5000)
-    # app.run(host='0.0.0.0')
     app.run(host='0.0.0.0')

@@ -7,7 +7,8 @@ To begin, two models are made, one titled User and one titled Club.
 Club contains a field for the code, name, description, and tags, as well as a column called "favorites" that keeps track of the number of times the club has been favorited. 
 User has columns for a PennID, username, name, graduation year, major, email, and favorites, as well as a salt and hash column used later for authentication.
 Both classes have to_dict() methods that are called upon in the application's various GET routes.
-Note: Both club tags and user favorites are stored as json dumped text.
+Note: Both club tags and user favorites are stored as json dumped text. This makes direct reads easier to decipher without outside code, and makes reading the tags/favorites back into lists in code much easier. 
+It also allows one to add new tags seamlessly, without the need for new columns.
 
 In bootstrap.py:
 create_user() does exactly as told, creating a user called josh with a terrible password. At least it's encrypted. A random salt is generated and hashed alongside the inputted password.
@@ -18,8 +19,19 @@ load_data() loops through clubs.json, adding each one to the database via Club. 
 Outside libraries used are bcrypt for password encryption and bs4 and requests for web scraping.
 
 In app.py:
+Each of the routes are implemented like asked. 
+There is an adduser route that is a signup for new users, a log-in route that utilizes flask-login, and a logout route to end.
+The favorites route is only usable when the target user is the one that is currently logged in. Otherwise it throws a 400 error.
+For the custom route, I added an "addtag" route that appends new tags onto existing ones for a certain club, instead of needing one to modify the entire tag section.
+To do this, we read in the tag json for a certain club code query, load it into a list, apppend the new tag, then dump it back into the json.
+--> Challenge 2 is also implemented here, via a test-client. It tests all the POST routes as well as a few GET routes. The other ones can be tested via web-browser!
 
-
+Challenge 4: 
+A docker image was created that runs the webapp. To do this, navigate to the pennlabs-challenge directory, and run:
+ > docker build -t pennlabs-challenge --no-cache . 
+ Once it finishes building, run:
+ > docker run -p 5500:5000 pennlabs-challenge
+This creates a docker container, which allows one to access the webapp (on the network) through 127.0.0.1:5500/api.
 
 ## Installation
 

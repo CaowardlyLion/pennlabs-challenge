@@ -12,7 +12,6 @@ def create_user():
     major = "Computer Science",
     hash = bcrypt.hashpw(b"password", salt),
     salt = salt,
-    favorites = json.dumps([]),
     email = "joshdoe@upenn.edu")
     
     db.session.add(josh)
