@@ -1,4 +1,3 @@
-from cmath import e
 import bcrypt
 import json
 from flask import Flask, request, jsonify
@@ -70,20 +69,15 @@ def add():
     code = request.form.get("code")
     name = request.form.get("name")
     description = request.form.get("description")   
-    print("Before tags")
-    tags = json.dumps(request.form.get("tags"))
-    print("Made it through tags")
     query = Club.query.filter_by(code = code).one_or_none()
     if query is not None:
-        print("Already exists")
-        return {}
+        return jsonify({"Error:" : "Club already exists with that code."}), 400
     club = Club(code = code,
         name = name,
         description = description,
-        tags = tags)
+        tags = json.dumps(request.form.getlist("tags")))
     db.session.add(club)
     db.session.commit()
-    print("Commited")
     return {}
 
 from flask_login import login_required, current_user
@@ -91,7 +85,6 @@ from flask_login import login_required, current_user
 @app.route('/api/favorite', methods = ['POST'])
 # @login_required
 def favorite():
-    print("In Favorite.")
     id = request.form.get("id")
     clubid = request.form.get("clubid")
     query = User.query.filter_by(id = id).one_or_none()
@@ -99,35 +92,35 @@ def favorite():
 
     loginip = request.remote_addr
     if query == current_user:
-        print("Current User.")
         if query is not None and clubquery is not None:
             favorites = json.loads(query.favorites)
             if clubid in favorites:
-                print("already in favorites")
-                return {}
+                return jsonify({"Error:" : "Already in favorites."}), 400
             else:
-                print("Working.")
-                print(favorites)
                 favorites.append(clubid)
                 query.favorites = json.dumps(favorites)
                 clubquery.favorites += 1
                 db.session.commit()
                 return {}
     else: 
-        return 401
+        return jsonify({"Error:" : "User Not Authenticated."}), 400
 
 @app.route('/api/modify', methods = ['POST'])
 def modify():
-    clubid = request.form.get("id")
+    clubid = request.form.get("clubid")
     field = request.form.get("field")
     value = request.form.get("value")
-    query = Club.query.filter_by(code = clubid).one_or_none()
-    if field in ["description", "name", "tags"] and query is not None:
+    query = Club.query.filter_by(code = clubid)
+    if str(field) in ["description", "name"] and query.one_or_none() is not None:
         query.update({field: value})
         db.session.commit()
         return {}
-    else: 
+    elif str(field) == "tags":
+        query.update({field: json.dumps(value)})
+        db.session.commit()
         return {}
+    else: 
+        return jsonify({"Error:" : "Invalid field to modify."})
 
 @app.route('/api/tags')
 def tags():
@@ -145,18 +138,37 @@ def tags():
 @app.route('/api/adduser', methods = ['POST'])
 def adduser():
     salt = bcrypt.gensalt()
-    id = request.json.get("id")
-    username = request.json.get("username"),
-    name = request.json.get("name"),
-    grad = request.json.get("grad"),
-    major = request.json.get("major"),
-    key = bcrypt.hashpw(request.json.get("password"), salt),
+    userid = request.form.get("id")
+    username = request.form.get("username")
+    name = request.form.get("name")
+    grad = request.form.get("grad")
+    major = request.form.get("major")
+    email = request.form.get("email")
+    hash = bcrypt.hashpw(request.form.get("password").encode(), salt)
     # lastlogin = datetime.now(),
-    favorites = json.dump({})
-
-    user = User(id = id, username = username, name = name, grad = grad, major = major, key = key, salt = salt, favorites = favorites)
+    favorites = json.dumps([])
+    query = User.query.filter_by(id = userid).one_or_none()
+    query2 = User.query.filter_by(username = username).one_or_none()
+    if query is not None and query2 is not None:
+        return jsonify({"Error": "User already exists with that PennID or username."}), 400
+    user = User(id = userid, username = username, name = name, grad = grad, major = major, hash = hash, salt = salt, favorites = favorites, email = email)
     db.session.add(user)
     db.session.commit()
+    return {}
+
+@app.route('/api/addtag', methods = ['POST'])
+def addtag():
+    clubid = request.form.get("clubid")
+    tag = request.form.get("tag")
+    query = Club.query.filter_by(code = clubid).one_or_none()
+    if query is not None:
+        l = json.loads(query.tags)
+        l.append(tag)
+        query.tags = json.dumps(l)
+        db.session.commit()
+        return {}
+    else:
+        return jsonify({"Error:" : "Club does not exist."}), 400
 
 @app.route('/api/login', methods = ['POST'])
 def login():
@@ -165,35 +177,28 @@ def login():
     passwd = request.form.get("password")
     # username = "josh"
     # passwd = "password"
-    print(username)
     query = User.query.filter_by(username = username).one_or_none() 
     salt = bytes(query.salt)
-    print(str(bcrypt.hashpw(passwd.encode(), salt)))
-    print(query.hash)
     if query is not None and str(bcrypt.hashpw(passwd.encode(), salt)) == str(query.hash):
           login_user(query, remember=False)
-          print("Logged in.")
     #     query.is_authenticated = True
     #     query.auth_ip = loginip
           return {}
     else:
-        print("Fail")
+        return jsonify({"Error:" : "Incorrect password, or user does not exist."}), 400
 
+from flask_login import logout_user 
 @app.route('/api/logout', methods = ['POST'])
+@login_required
 def logout():
-    loginip = request.remote_addr
-    username = request.args.get("username")
-    query = User.query.filter_by(username = username).one_or_none() 
-    if query is not None and query.auth_ip == loginip:
-        query.auth_ip = "0.0.0.0"
-        query.is_authenticated = False
-    else:
-        return 401
+    logout_user()
+    return {}
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.filter_by(id = user_id).one_or_none()
 
+# Unit tests! Mainly tests the POST routes as the GET routes are viewable via browser
 if __name__ == '__main__':
     app.secret_key = "super secret key"
     with app.test_client() as test_client:
@@ -205,10 +210,22 @@ if __name__ == '__main__':
         description = "This is a club that I made for testing!", tags = ["Pre-Professional", "Technology"]))
         print(response)
         response = test_client.get('/api/search', query_string = dict(query = "cao"))
-        print(response)
+        print(response.data)
         response = test_client.post('/api/modify', data = dict(field = "description", clubid = "ecfc", value = "This is a changed Description."))
         print(response)
+        response = test_client.post('/api/addtag', data = dict(clubid = "ecfc", tag = "Athletics"))
+        print(response)
+        response = test_client.get('/api/search', query_string = dict(query = "cao"))
+        print(response.data)
+        response = test_client.post('/api/adduser', data = dict(id = 12345678, username = "ecao", name = "Eric Cao", grad = 2029, major = "Mathematics", password = "PennLabsCool2", email = "ecao22@seas.upenn.edu"))
+        print(response)
+        response = test_client.get('/api/profile', query_string = dict(username = "ecao"))
+        print(response.data)
+        response = test_client.post('/api/logout')
+        print(response)
+        response = test_client.post('/api/favorite', data = dict(id = 31394502, clubid = "pppjo"))
+        print(response)
 
-
-# if __name__ == '__main__':
-#     app.run()
+    
+if __name__ == '__main__':
+    app.run()

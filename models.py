@@ -16,9 +16,6 @@ class Club(db.Model):
     tags = db.Column(db.Text())
     favorites = db.Column(db.Integer(), default = 0)
 
-    def __repr__(self):
-        return '<Club %r>' % self.name
-
     def to_dict(self):
         return {'code': self.code,
         'name': self.name,
@@ -27,9 +24,9 @@ class Club(db.Model):
         'favorites': self.favorites}
 
 class User(UserMixin, db.Model):
-    id = db.Column(db.Integer(), primary_key = True)
-    username = db.Column(db.String(20), unique=True, nullable=False, primary_key = True)
-    name = db.Column(db.String(20), nullable=False)
+    id = db.Column(db.Integer(), primary_key = True, unique = True)
+    username = db.Column(db.Text, unique=True, primary_key = True)
+    name = db.Column(db.String(40), nullable=False)
     grad = db.Column(db.Integer())
     major = db.Column(db.String(50))
     hash = db.Column(db.Text())
@@ -38,8 +35,8 @@ class User(UserMixin, db.Model):
     # lastlogin = db.Column(db.Time(), default = datetime.now)
     favorites = db.Column(db.Text())
 
-    is_authenticated = db.Column(db.Boolean(), default = False)
-    auth_ip = db.Column(db.String(20), default = "0.0.0.0")
+    # is_authenticated = db.Column(db.Boolean(), default = False)
+    # auth_ip = db.Column(db.String(20), default = "0.0.0.0")
 
     def to_dict(self):
         return {'name': self.name,
