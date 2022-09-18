@@ -2,5 +2,7 @@ Pipfile.lock
 *.pyc
 *.log
 *.db
+*.db-journal
+files/*
 __pycache__
 Dockerfile

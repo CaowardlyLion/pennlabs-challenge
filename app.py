@@ -1,3 +1,4 @@
+import os
 import bcrypt
 import json
 from flask import Flask, request, jsonify
@@ -8,7 +9,7 @@ DB_FILE = "clubreview.db"
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{DB_FILE}"
-app.config['UPLOAD_FOLDER'] = ["files/"]
+app.config['UPLOAD_FOLDER'] = "files/"
 app.config['MAX_CONTENT_PATH'] = 8000000
 
 
@@ -60,8 +61,8 @@ def search():
     args = request.args
     q = args.get("query")
     query = Club.query.filter(Club.name.contains(q)).all()
-    parsed = [i.to_dict() for i in query]
-    return jsonify(parsed)
+    names = [i.name for i in query]
+    return jsonify(names)
 
 @app.route('/api/add', methods = ['POST'])
 def add():
@@ -167,6 +168,8 @@ def addtag():
     query = Club.query.filter_by(code = clubid).one_or_none()
     if query is not None:
         l = json.loads(query.tags)
+        if tag in l:
+            return jsonify({"Error:" : "Tag already in club."}), 400
         l.append(tag)
         query.tags = json.dumps(l)
         db.session.commit()
@@ -203,7 +206,14 @@ from werkzeug.utils import secure_filename
 @app.route('/api/upload', methods = ['POST'])
 def upload():
     f = request.files['file']
-    f.save(secure_filename(f.filename))
+    clubid = request.form.get("clubid")
+    query = Club.query.filter_by(code = clubid).one_or_none()
+    if query is not None:
+        f.save(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
+        l = json.loads(query.files)
+        l.append(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
+        query.files = json.dumps(l)
+        db.session.commit()
     return {}
 
 # Unit tests! Mainly tests the POST routes as the GET routes are viewable via browser
@@ -233,8 +243,10 @@ if __name__ == '__main__':
         print(response)
         response = test_client.post('/api/favorite', data = dict(id = 31394502, clubid = "pppjo"))
         print(response)
-        response = test_client.post('/api/upload', data = open("file.txt"))
+        response = test_client.post('/api/upload', data = dict(file = (open("file.txt", 'rb'), "file.txt"), clubid = "ecfc"))
         print(response)
+        response = test_client.get('/api/clubs')
+        print(response.data)
     
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

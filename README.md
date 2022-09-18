@@ -4,7 +4,7 @@
 
 To begin, two models are made, one titled User and one titled Club. 
 
-Club contains a field for the code, name, description, and tags, as well as a column called "favorites" that keeps track of the number of times the club has been favorited. 
+Club contains a field for the code, name, description, and tags, as well as a column called "favorites" that keeps track of the number of times the club has been favorited. It also has a field for file locations.
 User has columns for a PennID, username, name, graduation year, major, email, and favorites, as well as a salt and hash column used later for authentication.
 Both classes have to_dict() methods that are called upon in the application's various GET routes.
 Note: Both club tags and user favorites are stored as json dumped text. This makes direct reads easier to decipher without outside code, and makes reading the tags/favorites back into lists in code much easier. 
@@ -13,7 +13,9 @@ It also allows one to add new tags seamlessly, without the need for new columns.
 In bootstrap.py:
 create_user() does exactly as told, creating a user called josh with a terrible password. At least it's encrypted. A random salt is generated and hashed alongside the inputted password.
 load_data() loops through clubs.json, adding each one to the database via Club. We also dump the list of tags from each club.
+
  --> Challenge 1 is implemented, which scans for where the description, name, and tag data are in the website. 
+ 
  --> However, to generate codes, we turn the name of the club into an acronym; if such a code already exists, we append a number on the end until it is no longer a duplicate.
 
 Outside libraries used are bcrypt for password encryption and bs4 and requests for web scraping.
@@ -23,6 +25,7 @@ Each of the routes are implemented like asked.
 There is an adduser route that is a signup for new users, a log-in route that utilizes flask-login, and a logout route to end.
 The favorites route is only usable when the target user is the one that is currently logged in. Otherwise it throws a 400 error.
 For the custom route, I added an "addtag" route that appends new tags onto existing ones for a certain club, instead of needing one to modify the entire tag section.
+For Challenge 3, I create an upload route that takes in a file and club code. The files are added to the files/ folder, and their location is stored in the Club database entry.
 To do this, we read in the tag json for a certain club code query, load it into a list, apppend the new tag, then dump it back into the json.
 --> Challenge 2 is also implemented here, via a test-client. It tests all the POST routes as well as a few GET routes. The other ones can be tested via web-browser!
 

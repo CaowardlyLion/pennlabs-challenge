@@ -22,7 +22,8 @@ class Club(db.Model):
         'name': self.name,
         'description': self.description,
         'tags': self.tags,
-        'favorites': self.favorites}
+        'favorites': self.favorites,
+        'files': self.files}
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer(), primary_key = True, unique = True)
