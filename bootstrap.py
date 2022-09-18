@@ -30,7 +30,6 @@ def load_data():
         name = i["name"],
         description = i["description"],
         tags =  json.dumps(i["tags"]))
-        print(club.name)
         db.session.add(club)       
     db.session.commit()
 
@@ -75,3 +74,4 @@ if __name__ == '__main__':
     db.create_all()
     create_user()
     load_data()
+    print("Bootstrap Done.")
