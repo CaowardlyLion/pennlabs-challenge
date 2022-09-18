@@ -1,4 +1,3 @@
-from datetime import datetime
 from app import db
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy

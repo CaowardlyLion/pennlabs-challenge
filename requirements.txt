@@ -3,5 +3,4 @@ flask
 flask-login
 flask-sqlalchemy
 bcrypt
-json
 waitress
