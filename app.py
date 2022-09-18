@@ -39,162 +39,176 @@ def api():
 
 @app.route('/api/clubs', methods = ['GET'])
 def clubs():
-    query = Club.query.all()
-    parsed = [i.to_dict() for i in query]
-    return jsonify(parsed)
+    if request.method == 'GET':
+        query = Club.query.all()
+        # See to_dict() in models.py
+        parsed = [i.to_dict() for i in query]
+        return jsonify(parsed)
+    return jsonify({}), 400
 
 # Profile route: looks for user with a certain username; if none exists, return empty dictionary
 @app.route('/api/profile', methods = ['GET'])
 def profile():
-    args = request.args
-    username = args.get("username")
-
-    query = User.query.filter_by(username = username).one_or_none()
-    if query is not None:
-        # to_dict returns 
-        return jsonify(query.to_dict())
-    else:
-        return jsonify({})
+    if request.method == 'GET':
+        args = request.args
+        username = args.get("username")
+        query = User.query.filter_by(username = username).one_or_none()
+        if query is not None:
+            return jsonify(query.to_dict())
+        else:
+            return jsonify({})
+    return jsonify({}), 400
 
 @app.route('/api/search', methods = ['GET'])
 def search():
-    args = request.args
-    q = args.get("query")
-    query = Club.query.filter(Club.name.contains(q)).all()
-    names = [i.name for i in query]
-    return jsonify(names)
+    if request.method == 'GET':
+        args = request.args
+        q = args.get("query")
+        query = Club.query.filter(Club.name.contains(q)).all()
+        names = [i.name for i in query]
+        return jsonify(names)
+    return jsonify({}), 400
 
 @app.route('/api/add', methods = ['POST'])
 def add():
-    # code = db.Column(db.String(20), unique=True, nullable=False, primary_key = True)
-    # name = db.Column(db.String(60), nullable=False)
-    # description = db.Column(db.Text(), nullable=False)
-    # tags = db.Column(db.Text())
-
-    code = request.form.get("code")
-    name = request.form.get("name")
-    description = request.form.get("description")   
-    query = Club.query.filter_by(code = code).one_or_none()
-    if query is not None:
-        return jsonify({"Error:" : "Club already exists with that code."}), 400
-    club = Club(code = code,
-        name = name,
-        description = description,
-        tags = json.dumps(request.form.getlist("tags")))
-    db.session.add(club)
-    db.session.commit()
-    return {}
+    if request.method == 'POST':
+        code = request.form.get("code")
+        name = request.form.get("name")
+        description = request.form.get("description")   
+        query = Club.query.filter_by(code = code).one_or_none()
+        if query is not None: # If code already exists in database, reject.
+            return jsonify({"Error:" : "Club already exists with that code."}), 400
+        club = Club(code = code,
+            name = name,
+            description = description,
+            tags = json.dumps(request.form.getlist("tags")))
+        db.session.add(club)
+        db.session.commit()
+        return {}
+    return jsonify({}), 400
 
 from flask_login import login_required, current_user
 
 @app.route('/api/favorite', methods = ['POST'])
-# @login_required
 def favorite():
-    id = request.form.get("id")
-    clubid = request.form.get("clubid")
-    query = User.query.filter_by(id = id).one_or_none()
-    clubquery = Club.query.filter_by(code = clubid).one_or_none()
-
-    loginip = request.remote_addr
-    if query == current_user:
-        if query is not None and clubquery is not None:
-            favorites = json.loads(query.favorites)
-            if clubid in favorites:
-                return jsonify({"Error:" : "Already in favorites."}), 400
-            else:
-                favorites.append(clubid)
-                query.favorites = json.dumps(favorites)
-                clubquery.favorites += 1
-                db.session.commit()
-                return {}
-    else: 
-        return jsonify({"Error:" : "User Not Authenticated."}), 400
+    if request.method == 'POST':
+        id = request.form.get("id")
+        clubid = request.form.get("clubid")
+        query = User.query.filter_by(id = id).one_or_none()
+        clubquery = Club.query.filter_by(code = clubid).one_or_none()
+        
+        if query == current_user: # If logged in, and is the same user as the one we are trying to change.
+            if query is not None and clubquery is not None:
+                favorites = json.loads(query.favorites)
+                if clubid in favorites:
+                    return jsonify({"Error:" : "Already in favorites."}), 400
+                else:
+                    favorites.append(clubid)
+                    query.favorites = json.dumps(favorites)
+                    clubquery.favorites += 1
+                    db.session.commit()
+                    return {}
+        else: 
+            return jsonify({"Error:" : "User Not Authenticated."}), 400
+    return jsonify({}), 400
 
 @app.route('/api/modify', methods = ['POST'])
 def modify():
-    clubid = request.form.get("clubid")
-    field = request.form.get("field")
-    value = request.form.get("value")
-    query = Club.query.filter_by(code = clubid)
-    if str(field) in ["description", "name"] and query.one_or_none() is not None:
-        query.update({field: value})
-        db.session.commit()
-        return {}
-    elif str(field) == "tags":
-        query.update({field: json.dumps(value)})
-        db.session.commit()
-        return {}
-    else: 
-        return jsonify({"Error:" : "Invalid field to modify."})
+    if request.method == 'POST':
+        clubid = request.form.get("clubid")
+        field = request.form.get("field")
+        value = request.form.get("value")
+        query = Club.query.filter_by(code = clubid)
+        if str(field) in ["description", "name"] and query.one_or_none() is not None:
+            query.update({field: value})
+            db.session.commit()
+            return {}
+        elif str(field) == "tags":
+            query.update({field: json.dumps(value)})
+            db.session.commit()
+            return {}
+        else: 
+            return jsonify({"Error:" : "Invalid field to modify."})
+    return jsonify({}), 400
 
-@app.route('/api/tags')
+@app.route('/api/tags', methods = ['GET'])
 def tags():
-    tagdict = {}
-    query = Club.query.all()
-    for i in query:
-        taglist = json.loads(i.tags)
-        for tag in taglist:
-            if tag in tagdict.keys():
-                tagdict[tag] += 1
-            else:
-                tagdict[tag] = 1
-    return jsonify(tagdict)
+    if request.method == 'GET':
+        tagdict = {}
+        query = Club.query.all()
+        for i in query:
+            taglist = json.loads(i.tags)
+            for tag in taglist:
+                if tag in tagdict.keys():
+                    tagdict[tag] += 1
+                else:
+                    tagdict[tag] = 1
+        return jsonify(tagdict)
+    return jsonify({}), 400
     
 @app.route('/api/adduser', methods = ['POST'])
 def adduser():
-    salt = bcrypt.gensalt()
-    userid = request.form.get("id")
-    username = request.form.get("username")
-    name = request.form.get("name")
-    grad = request.form.get("grad")
-    major = request.form.get("major")
-    email = request.form.get("email")
-    hash = bcrypt.hashpw(request.form.get("password").encode(), salt)
-    # lastlogin = datetime.now(),
-    # favorites = json.dumps([])
-    query = User.query.filter_by(id = userid).one_or_none()
-    query2 = User.query.filter_by(username = username).one_or_none()
-    if query is not None and query2 is not None:
-        return jsonify({"Error": "User already exists with that PennID or username."}), 400
-    user = User(id = userid, username = username, name = name, grad = grad, major = major, hash = hash, salt = salt, email = email)
-    db.session.add(user)
-    db.session.commit()
-    return {}
+    if request.method == 'POST':
+        salt = bcrypt.gensalt()
+        userid = request.form.get("id")
+        username = request.form.get("username")
+        name = request.form.get("name")
+        grad = request.form.get("grad")
+        major = request.form.get("major")
+        email = request.form.get("email")
+        hash = bcrypt.hashpw(request.form.get("password").encode(), salt)
+
+        query = User.query.filter_by(id = userid).one_or_none()
+        query2 = User.query.filter_by(username = username).one_or_none()
+        if query is not None and query2 is not None:
+            return jsonify({"Error": "User already exists with that PennID or username."}), 400
+        user = User(id = userid, username = username, name = name, grad = grad, major = major, hash = hash, salt = salt, email = email)
+        db.session.add(user)
+        db.session.commit()
+        return {}
+    return jsonify({}), 400
 
 @app.route('/api/addtag', methods = ['POST'])
 def addtag():
-    clubid = request.form.get("clubid")
-    tag = request.form.get("tag")
-    query = Club.query.filter_by(code = clubid).one_or_none()
-    if query is not None:
-        l = json.loads(query.tags)
-        if tag in l:
-            return jsonify({"Error:" : "Tag already in club."}), 400
-        l.append(tag)
-        query.tags = json.dumps(l)
-        db.session.commit()
-        return {}
-    else:
-        return jsonify({"Error:" : "Club does not exist."}), 400
+    if request.method == 'POST':
+        clubid = request.form.get("clubid")
+        tag = request.form.get("tag")
+        query = Club.query.filter_by(code = clubid).one_or_none()
+        if query is not None:
+            l = json.loads(query.tags)
+            if tag in l:
+                return jsonify({"Error:" : "Tag already in club."}), 400
+            l.append(tag)
+            query.tags = json.dumps(l)
+            db.session.commit()
+            return {}
+        else:
+            return jsonify({"Error:" : "Club does not exist."}), 400
+    return jsonify({}), 400
+
 
 @app.route('/api/login', methods = ['POST'])
 def login():
-    username = request.form.get("username")
-    passwd = request.form.get("password")
-    query = User.query.filter_by(username = username).one_or_none() 
-    salt = bytes(query.salt)
-    if query is not None and str(bcrypt.hashpw(passwd.encode(), salt)) == str(query.hash):
-          login_user(query, remember=False)
-          return {}
-    else:
-        return jsonify({"Error:" : "Incorrect password, or user does not exist."}), 400
+    if request.method == 'POST':
+        username = request.form.get("username")
+        passwd = request.form.get("password")
+        query = User.query.filter_by(username = username).one_or_none() 
+        salt = bytes(query.salt)
+        if query is not None and str(bcrypt.hashpw(passwd.encode(), salt)) == str(query.hash):
+            login_user(query, remember=False)
+            return {}
+        else:
+            return jsonify({"Error:" : "Incorrect password, or user does not exist."}), 400
+    return jsonify({}), 400
 
 from flask_login import logout_user 
 @app.route('/api/logout', methods = ['POST'])
 @login_required
 def logout():
-    logout_user()
-    return {}
+    if request.method == 'POST':
+        logout_user()
+        return {}
+    return jsonify({}), 400
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -205,16 +219,18 @@ from werkzeug.utils import secure_filename
 # Challenge 3: File Upload
 @app.route('/api/upload', methods = ['POST'])
 def upload():
-    f = request.files['file']
-    clubid = request.form.get("clubid")
-    query = Club.query.filter_by(code = clubid).one_or_none()
-    if query is not None:
-        f.save(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
-        l = json.loads(query.files)
-        l.append(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
-        query.files = json.dumps(l)
-        db.session.commit()
-    return {}
+    if request.method == 'POST':
+        f = request.files['file']
+        clubid = request.form.get("clubid")
+        query = Club.query.filter_by(code = clubid).one_or_none()
+        if query is not None:
+            f.save(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
+            l = json.loads(query.files)
+            l.append(app.config['UPLOAD_FOLDER'] + secure_filename(f.filename))
+            query.files = json.dumps(l)
+            db.session.commit()
+        return {}
+    return jsonify({}), 400
 
 # Unit tests! Mainly tests the POST routes as the GET routes are viewable via browser
 if __name__ == '__main__':
