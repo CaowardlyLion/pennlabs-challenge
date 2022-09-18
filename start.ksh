@@ -1,3 +1,3 @@
-cd pennlabs-challenge
+cd /opt/pennlabs-challenge
 python3 bootstrap.py
 python3 app.py
