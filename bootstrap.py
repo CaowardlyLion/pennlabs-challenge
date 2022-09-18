@@ -1,12 +1,36 @@
+import json
 import os
 from app import db, DB_FILE
+import bcrypt
+from datetime import datetime
 
 def create_user():
-    print("TODO: Create a user called josh")
+    salt = bcrypt.gensalt()
+    josh = User(id = 31394502,
+    username = "josh",
+    name = "Josh Doe",
+    grad = 2026,
+    major = "Computer Science",
+    hash = bcrypt.hashpw(b"password", salt),
+    salt = salt,
+    favorites = json.dumps([]),
+    email = "joshdoe@upenn.edu")
+    
+    db.session.add(josh)
+    db.session.commit()
+from models import *
 
 def load_data():
-    from models import *
-    print("TODO: Load in clubs.json to the database.")
+    file = open("clubs.json")
+    data = json.load(file)
+    for i in data:
+        club = Club(code = i["code"],
+        name = i["name"],
+        description = i["description"],
+        tags =  json.dumps(i["tags"]))
+        print(club.name)
+        db.session.add(club)       
+    db.session.commit()
 
 
 
