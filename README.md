@@ -25,7 +25,8 @@ Each of the routes are implemented like asked.
 There is an adduser route that is a signup for new users, a log-in route that utilizes flask-login, and a logout route to end.
 The favorites route is only usable when the target user is the one that is currently logged in. Otherwise it throws a 400 error.
 For the custom route, I added an "addtag" route that appends new tags onto existing ones for a certain club, instead of needing one to modify the entire tag section.
-For Challenge 3, I create an upload route that takes in a file and club code. The files are added to the files/ folder, and their location is stored in the Club database entry.
+
+--> For Challenge 3, I create an upload route that takes in a file and club code. The files are added to the files/ folder, and their location is stored in the Club database entry.
 To do this, we read in the tag json for a certain club code query, load it into a list, apppend the new tag, then dump it back into the json.
 
 --> Challenge 2 is also implemented here, via a test-client. It tests all the POST routes as well as a few GET routes. The other ones can be tested via web-browser!
